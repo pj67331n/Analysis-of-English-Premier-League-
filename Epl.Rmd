@@ -1,0 +1,199 @@
+---
+title: "eplexploratory"
+---
+
+```{r}
+epl = read.csv("epldata_final.csv")
+head(epl)
+epl1=na.omit(epl)
+sum(is.na(epl1))
+
+epl1
+```
+
+```{r}
+summary(epl)
+```
+
+```{r}
+sum(is.na(epl))
+```
+
+
+```{r}
+epl$position_cat<- as.factor(epl$position_cat)
+epl$region<- as.factor(epl$region)
+epl$new_foreign<- as.factor(epl$new_foreign)
+epl$age_cat<- as.factor(epl$age_cat)
+epl$club_id<- as.factor(epl$club_id)
+epl$big_club<- as.factor(epl$big_club)
+epl$new_signing<- as.factor(epl$new_signing)
+```
+
+
+```{r}
+summary(epl)
+```
+
+```{r}
+require("ggmap")
+library('ggmap')
+require("ggplot2")
+library('ggplot2')
+```
+
+
+
+## Popularity of club based on the fpl value.
+
+```{r}
+ggplot(data=epl, aes(x=epl$club, y=mean(epl$fpl_value))) +
+geom_bar(stat="identity") + theme(axis.text = element_text(angle = 60, hjust = 1))
+```
+
+
+```{r}
+#position <- data.frame(epl$position_cat=c(4, 3, 2, 1),labels=c("Goalkeeper", "Defence", "Midfield", "Attacker"))
+```
+
+
+
+
+```{r}
+ggplot(epl, aes(x=epl$fpl_value, y=epl$market_value)) +
+geom_point(size=2, shape=20)
+```
+
+
+```{r}
+ggplot(data=epl, aes(x=epl$nationality, y=epl$fpl_value)) +
+geom_bar(stat="identity") + theme(axis.text = element_text(angle = 60, hjust = 1))
+```
+
+
+
+```{r}
+ggplot(data=epl, aes(x=epl$club, y=mean(epl$page_views))) +
+geom_bar(stat="identity") + theme(axis.text = element_text(angle = 60, hjust = 1))
+```
+
+
+```{r}
+str(epl)
+```
+
+
+```{r}
+xtabs(~new_signing + region, data = epl)
+```
+
+
+# Partition data in train 80% and test 20%
+
+```{r}
+#set.seed(1234)
+#sign <- sample(2,nrow(epl), replace=T,prob = c(0.8,0.2))
+#train <- epl[sign==1,]
+#test <- epl[sign==2,]
+
+```
+
+# Logistic regression model
+```{r}
+epl$region <- factor(epl$region)
+mymodel <- glm(formula = new_signing ~page_views +region + age, data=epl, family = binomial)
+```
+
+  
+```{r}
+summary(mymodel)
+```
+
+# Predictions
+```{r}
+#p1 <- predict(mymodel,train,type = 'response')
+#head(p1)
+#head(train)
+```
+
+```{r}
+table(epl$new_signing)
+```
+
+```{r}
+#hist(epl$age, bins=30)
+```
+
+
+```{r}
+confint(mymodel)
+```
+
+```{r}
+confint.default(mymodel)
+```
+    
+
+```{r}
+exp(coef(mymodel))
+```
+
+```{r}
+exp(cbind(OR= coef(mymodel),confint(mymodel)))
+```
+
+```{r}
+newdata1 <- with(epl,data.frame(age =mean(age),page_views=mean(page_views),region = factor(1:4)))
+```
+
+```{r}
+newdata1
+```
+
+```{r}
+newdata1$regionP <- predict(mymodel, newdata = newdata1, type="response")
+newdata1
+```
+
+```{r}
+newdata2 <- with(epl,data.frame(page_views=rep(seq(from = 1000, to = 4000, length.out = 100),4), age = mean(age), region = factor(rep(1:4, each = 100))))
+```
+
+```{r}
+newdata3 <- cbind(newdata2, predict(mymodel, newdata = newdata2, type = "link", se = TRUE))
+
+newdata3 <- within(newdata3, {
+  PredictProb <- plogis(fit)
+  LL <- plogis(fit - (1.96 * se.fit))
+  UL <- plogis(fit + (1.96 * se.fit))
+})
+
+head(newdata3)
+
+```
+
+
+```{r}
+ggplot(newdata3, aes(x = page_views, y = PredictProb)) + geom_ribbon(aes(ymin = LL,
+    ymax = UL, fill = region), alpha = 0.2) + geom_line(aes(colour = region),
+    size = 1)
+```
+
+```{r}
+with(mymodel, null.deviance - deviance)
+```
+
+```{r}
+with(mymodel, df.null - df.residual)
+```
+
+```{r}
+with(mymodel, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+```
+
+```{r}
+logLik(mymodel)
+```
+
+```
+
